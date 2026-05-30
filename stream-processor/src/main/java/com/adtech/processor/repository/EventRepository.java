@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.Optional;
 
 @Repository
@@ -26,7 +27,7 @@ public class EventRepository {
             ) VALUES (CAST(? AS UUID), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (event_id) DO NOTHING
             """,
-            event.getEventId(),
+            toUuid(event.getEventId()),
             event.getTenantId(),
             event.getEventType(),
             event.getCampaignId(),
@@ -95,6 +96,18 @@ public class EventRepository {
             tenantId, sessionId
         );
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    // Accepts proper UUIDs or any string — falls back to a generated UUID so
+    // non-standard SDK event IDs (e.g. "evt-1234-abc") never crash the insert.
+    private String toUuid(String id) {
+        if (id == null) return UUID.randomUUID().toString();
+        try {
+            UUID.fromString(id);
+            return id;
+        } catch (IllegalArgumentException e) {
+            return UUID.randomUUID().toString();
+        }
     }
 
     private Timestamp parseTimestamp(String ts) {
