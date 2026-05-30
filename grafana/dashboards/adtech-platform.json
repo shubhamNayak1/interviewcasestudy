@@ -2,56 +2,191 @@
   "title": "AdTech Platform Health",
   "uid": "adtech-platform",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
   "panels": [
+
     {
       "id": 1,
-      "title": "Events Received / sec",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-      "targets": [
-        {
-          "expr": "rate(events_received_total[1m])",
-          "legendFormat": "events/sec"
+      "title": "Total Events Received",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
+          "unit": "short",
+          "thresholds": { "steps": [{ "color": "green", "value": null }] }
         }
-      ]
+      },
+      "targets": [{ "expr": "sum(events_received_total)", "legendFormat": "Total Events" }]
     },
+
     {
       "id": 2,
-      "title": "API Request Latency (p99)",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[1m]))",
-          "legendFormat": "p99 latency"
+      "title": "Total Events Published to Kafka",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": { "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "unit": "short",
+          "thresholds": { "steps": [{ "color": "blue", "value": null }] }
         }
-      ]
+      },
+      "targets": [{ "expr": "sum(events_published_total)", "legendFormat": "Published" }]
     },
+
     {
       "id": 3,
-      "title": "API Error Rate",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
-      "targets": [
-        {
-          "expr": "rate(http_server_requests_seconds_count{status=~'5..'}[1m])",
-          "legendFormat": "errors/sec"
+      "title": "Total Events Processed (Stream Processor)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": { "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "purple", "mode": "fixed" },
+          "unit": "short",
+          "thresholds": { "steps": [{ "color": "purple", "value": null }] }
         }
-      ]
+      },
+      "targets": [{ "expr": "sum(events_processed_total)", "legendFormat": "Processed" }]
     },
+
     {
       "id": 4,
-      "title": "Kafka Consumer Lag",
+      "title": "Attribution Matches (Click-to-Basket)",
       "type": "stat",
-      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
-      "targets": [
-        {
-          "expr": "kafka_consumer_lag_sum",
-          "legendFormat": "lag"
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": { "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "unit": "short",
+          "thresholds": { "steps": [{ "color": "orange", "value": null }] }
         }
+      },
+      "targets": [{ "expr": "sum(attribution_matched_total)", "legendFormat": "Attributed" }]
+    },
+
+    {
+      "id": 5,
+      "title": "Events / sec (by type: received vs published vs processed)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Received" },  "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Published" }, "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Processed" }, "properties": [{ "id": "color", "value": { "fixedColor": "#B877D9", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "rate(events_received_total[1m])",  "legendFormat": "Received" },
+        { "expr": "rate(events_published_total[1m])", "legendFormat": "Published" },
+        { "expr": "rate(events_processed_total[1m])", "legendFormat": "Processed" }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "API Request Latency p99 / p95 / p50 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p99" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"insights-api\"}[1m])) by (le))", "legendFormat": "p99" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"insights-api\"}[1m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"insights-api\"}[1m])) by (le))", "legendFormat": "p50" }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "API Error Rate — 4xx (yellow) vs 5xx (red)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 15 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "4xx Client Errors" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FADE2A", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "5xx Server Errors" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{status=~\"4..\"}[1m]))", "legendFormat": "4xx Client Errors" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[1m]))", "legendFormat": "5xx Server Errors" }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "API Throughput — Requests/sec per Service",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "event-collector" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "insights-api" },    "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{job=\"event-collector\"}[1m]))", "legendFormat": "event-collector" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{job=\"insights-api\"}[1m]))",   "legendFormat": "insights-api" }
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "Events Rejected (invalid tenant)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Rejected" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        { "expr": "rate(events_rejected_total[1m])", "legendFormat": "Rejected" }
+      ]
+    },
+
+    {
+      "id": 10,
+      "title": "JVM Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "event-collector" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "insights-api" },    "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "stream-processor" },"properties": [{ "id": "color", "value": { "fixedColor": "#B877D9", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{job=\"event-collector\"})",  "legendFormat": "event-collector" },
+        { "expr": "sum(jvm_memory_used_bytes{job=\"insights-api\"})",     "legendFormat": "insights-api" },
+        { "expr": "sum(jvm_memory_used_bytes{job=\"stream-processor\"})", "legendFormat": "stream-processor" }
       ]
     }
+
   ]
 }
