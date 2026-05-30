@@ -1,0 +1,36 @@
+server:
+  port: 8082   # internal only, not exposed in docker-compose
+
+spring:
+  application:
+    name: stream-processor
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/adtech}
+    username: ${SPRING_DATASOURCE_USERNAME:adtech}
+    password: ${SPRING_DATASOURCE_PASSWORD:adtech123}
+    hikari:
+      maximum-pool-size: 10
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: stream-processor-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.adtech.processor.model,com.adtech.collector.model"
+        spring.json.value.default.type: com.adtech.processor.model.AdEvent
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+adtech:
+  attribution:
+    window-minutes: 30   # ADD_TO_CART within 30 min of AD_CLICK counts as click-to-basket
