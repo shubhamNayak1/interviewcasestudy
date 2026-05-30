@@ -9,12 +9,12 @@ services:
   retail-ui:
     build:
       args:
-        REACT_APP_COLLECTOR_URL: https://collector.${DOMAIN}
+        REACT_APP_COLLECTOR_URL: https://collector.shubhamnayak.online
 
   dashboard-ui:
     build:
       args:
-        REACT_APP_INSIGHTS_URL: https://api.${DOMAIN}
+        REACT_APP_INSIGHTS_URL: https://api.shubhamnayak.online
 
   event-collector:
     restart: always

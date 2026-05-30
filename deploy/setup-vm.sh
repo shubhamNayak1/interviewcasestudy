@@ -8,7 +8,7 @@
 # ─────────────────────────────────────────────────────────────────
 set -e
 
-REPO_URL="https://github.com/YOUR_USER/YOUR_REPO.git"   # ← replace before running
+REPO_URL="https://github.com/shubhamNayak1/interviewcasestudy.git"
 APP_DIR="/opt/adtech"
 
 echo "==> [1/5] Installing Docker..."
@@ -42,7 +42,10 @@ echo "vm.max_map_count=262144" >> /etc/sysctl.conf
 
 echo "==> [5/5] Starting all services..."
 docker compose pull --quiet
-docker compose up --build -d
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  up --build -d
 
 echo ""
 echo "✅  AdTech Platform is running!"
