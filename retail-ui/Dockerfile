@@ -4,7 +4,8 @@ WORKDIR /app
 COPY package.json .
 RUN npm install --silent
 COPY . .
-ENV REACT_APP_COLLECTOR_URL=http://localhost:8080
+ARG REACT_APP_COLLECTOR_URL=http://localhost:8080
+ENV REACT_APP_COLLECTOR_URL=$REACT_APP_COLLECTOR_URL
 RUN npm run build
 
 # --- Serve stage ---

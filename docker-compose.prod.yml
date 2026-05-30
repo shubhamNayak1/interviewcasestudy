@@ -1,0 +1,26 @@
+# Production overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Replaces localhost URLs with real domain URLs baked into the React builds.
+
+version: "3.9"
+
+services:
+  retail-ui:
+    build:
+      args:
+        REACT_APP_COLLECTOR_URL: https://collector.${DOMAIN}
+
+  dashboard-ui:
+    build:
+      args:
+        REACT_APP_INSIGHTS_URL: https://api.${DOMAIN}
+
+  event-collector:
+    restart: always
+
+  stream-processor:
+    restart: always
+
+  insights-api:
+    restart: always

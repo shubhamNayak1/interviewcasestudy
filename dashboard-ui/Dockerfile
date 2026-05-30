@@ -4,7 +4,8 @@ WORKDIR /app
 COPY package.json .
 RUN npm install --silent
 COPY . .
-ENV REACT_APP_INSIGHTS_URL=http://localhost:8081
+ARG REACT_APP_INSIGHTS_URL=http://localhost:8081
+ENV REACT_APP_INSIGHTS_URL=$REACT_APP_INSIGHTS_URL
 RUN npm run build
 
 # --- Serve stage ---

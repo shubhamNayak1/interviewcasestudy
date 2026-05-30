@@ -207,11 +207,33 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     ports:
       - "3002:3000"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Nginx Reverse Proxy  (production routing)
+  # ─────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: adtech-nginx
+    depends_on:
+      - retail-ui
+      - dashboard-ui
+      - insights-api
+      - event-collector
+      - kafka-ui
+      - grafana
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/adtech.conf
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
       - adtech-net
