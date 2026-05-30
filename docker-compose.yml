@@ -1,0 +1,217 @@
+version: "3.9"
+
+networks:
+  adtech-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+
+services:
+
+  # ─────────────────────────────────────────
+  # PostgreSQL
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: adtech-postgres
+    environment:
+      POSTGRES_DB: adtech
+      POSTGRES_USER: adtech
+      POSTGRES_PASSWORD: adtech123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - adtech-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adtech -d adtech"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Zookeeper
+  # ─────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: adtech-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Kafka
+  # ─────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: adtech-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CREATE_TOPICS: "ad-events:3:1,product-events:3:1,cart-events:3:1"
+    ports:
+      - "29092:29092"
+    networks:
+      - adtech-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Kafka UI
+  # ─────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: adtech-kafka-ui
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: adtech-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Event Collector  (Spring Boot)
+  # ─────────────────────────────────────────
+  event-collector:
+    build:
+      context: ./event-collector
+      dockerfile: Dockerfile
+    container_name: adtech-event-collector
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/adtech
+      SPRING_DATASOURCE_USERNAME: adtech
+      SPRING_DATASOURCE_PASSWORD: adtech123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8080:8080"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Stream Processor  (Spring Boot Kafka Consumer)
+  # ─────────────────────────────────────────
+  stream-processor:
+    build:
+      context: ./stream-processor
+      dockerfile: Dockerfile
+    container_name: adtech-stream-processor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/adtech
+      SPRING_DATASOURCE_USERNAME: adtech
+      SPRING_DATASOURCE_PASSWORD: adtech123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Insights API  (Spring Boot)
+  # ─────────────────────────────────────────
+  insights-api:
+    build:
+      context: ./insights-api
+      dockerfile: Dockerfile
+    container_name: adtech-insights-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/adtech
+      SPRING_DATASOURCE_USERNAME: adtech
+      SPRING_DATASOURCE_PASSWORD: adtech123
+    ports:
+      - "8081:8081"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Retail UI  (React → nginx)
+  # ─────────────────────────────────────────
+  retail-ui:
+    build:
+      context: ./retail-ui
+      dockerfile: Dockerfile
+    container_name: adtech-retail-ui
+    ports:
+      - "3000:80"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Dashboard UI  (React → nginx)
+  # ─────────────────────────────────────────
+  dashboard-ui:
+    build:
+      context: ./dashboard-ui
+      dockerfile: Dockerfile
+    container_name: adtech-dashboard-ui
+    ports:
+      - "3001:80"
+    networks:
+      - adtech-net
+
+  # ─────────────────────────────────────────
+  # Prometheus
+  # ─────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: adtech-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - adtech-net
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+
+  # ─────────────────────────────────────────
+  # Grafana
+  # ─────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: adtech-grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3002:3000"
+    networks:
+      - adtech-net

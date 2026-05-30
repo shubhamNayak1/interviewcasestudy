@@ -1,0 +1,57 @@
+{
+  "title": "AdTech Platform Health",
+  "uid": "adtech-platform",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Events Received / sec",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(events_received_total[1m])",
+          "legendFormat": "events/sec"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "API Request Latency (p99)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[1m]))",
+          "legendFormat": "p99 latency"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "API Error Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_seconds_count{status=~'5..'}[1m])",
+          "legendFormat": "errors/sec"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kafka Consumer Lag",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_consumer_lag_sum",
+          "legendFormat": "lag"
+        }
+      ]
+    }
+  ]
+}
