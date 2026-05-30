@@ -1,0 +1,33 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: insights-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/adtech}
+    username: ${SPRING_DATASOURCE_USERNAME:adtech}
+    password: ${SPRING_DATASOURCE_PASSWORD:adtech123}
+    hikari:
+      maximum-pool-size: 10
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+    operations-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+adtech:
+  valid-tenants: amazon,flipkart,walmart
