@@ -1,29 +1,34 @@
-export default function KpiCard({ title, value, subtitle, icon, color, trend }) {
+export default function KpiCard({ title, value, subtitle, icon, gradient, change }) {
+  const isPositive = change >= 0;
   return (
-    <div style={{ background: '#1a1d27', borderRadius: 12, padding: '20px 24px', border: `1px solid ${color}22`, position: 'relative', overflow: 'hidden' }}>
-      {/* Glow accent */}
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 3, background: color, borderRadius: '12px 12px 0 0' }} />
+    <div style={{ ...card, background: gradient, position: 'relative', overflow: 'hidden' }}>
+      {/* Glow orb */}
+      <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100,
+        borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div style={{ fontSize: 12, color: '#8892a4', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            {title}
-          </div>
-          <div style={{ fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-            {value ?? <span style={{ fontSize: 20, opacity: 0.4 }}>—</span>}
-          </div>
-          {subtitle && (
-            <div style={{ fontSize: 12, color: '#8892a4', marginTop: 6 }}>{subtitle}</div>
-          )}
-        </div>
-        <div style={{ fontSize: 32, opacity: 0.8 }}>{icon}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div style={{ fontSize: 28 }}>{icon}</div>
+        {change !== undefined && (
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+            background: isPositive ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)',
+            color: isPositive ? '#4ade80' : '#f87171' }}>
+            {isPositive ? '▲' : '▼'} {Math.abs(change)}%
+          </span>
+        )}
       </div>
 
-      {trend !== undefined && (
-        <div style={{ marginTop: 12, fontSize: 12, color: trend >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-          {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}% vs yesterday
-        </div>
-      )}
+      <div style={{ fontSize: 38, fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 6, letterSpacing: -1 }}>
+        {value ?? <span style={{ opacity: 0.3, fontSize: 24 }}>—</span>}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', marginBottom: 2 }}>{title}</div>
+      {subtitle && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{subtitle}</div>}
     </div>
   );
 }
+
+const card = {
+  borderRadius: 16,
+  padding: '20px 22px 18px',
+  cursor: 'default',
+  transition: 'transform 0.2s',
+};
