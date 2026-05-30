@@ -23,7 +23,7 @@ public class EventRepository {
                 event_id, tenant_id, event_type, campaign_id, ad_id, product_id,
                 user_id, session_id, event_timestamp, browser, os, device_type,
                 country, page_url, referrer
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (CAST(? AS UUID), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (event_id) DO NOTHING
             """,
             event.getEventId(),
@@ -45,15 +45,39 @@ public class EventRepository {
     }
 
     public void upsertImpressions(String tenantId, String campaignId) {
-        upsertMetric(tenantId, campaignId, "impressions");
+        jdbc.update("""
+            INSERT INTO campaign_metrics (tenant_id, campaign_id, metric_date, impressions, clicks, add_to_cart, ctr, click_to_basket)
+            VALUES (?, ?, CURRENT_DATE, 1, 0, 0, 0, 0)
+            ON CONFLICT (tenant_id, campaign_id, metric_date) DO UPDATE
+              SET impressions = campaign_metrics.impressions + 1,
+                  ctr         = CASE WHEN (campaign_metrics.impressions + 1) = 0 THEN 0
+                                     ELSE ROUND(CAST(campaign_metrics.clicks AS DECIMAL) / (campaign_metrics.impressions + 1), 4) END,
+                  updated_at  = NOW()
+            """, tenantId, campaignId);
     }
 
     public void upsertClicks(String tenantId, String campaignId) {
-        upsertMetric(tenantId, campaignId, "clicks");
+        jdbc.update("""
+            INSERT INTO campaign_metrics (tenant_id, campaign_id, metric_date, impressions, clicks, add_to_cart, ctr, click_to_basket)
+            VALUES (?, ?, CURRENT_DATE, 0, 1, 0, 0, 0)
+            ON CONFLICT (tenant_id, campaign_id, metric_date) DO UPDATE
+              SET clicks      = campaign_metrics.clicks + 1,
+                  ctr         = CASE WHEN campaign_metrics.impressions = 0 THEN 0
+                                     ELSE ROUND(CAST((campaign_metrics.clicks + 1) AS DECIMAL) / campaign_metrics.impressions, 4) END,
+                  updated_at  = NOW()
+            """, tenantId, campaignId);
     }
 
     public void upsertAddToCart(String tenantId, String campaignId) {
-        upsertMetric(tenantId, campaignId, "add_to_cart");
+        jdbc.update("""
+            INSERT INTO campaign_metrics (tenant_id, campaign_id, metric_date, impressions, clicks, add_to_cart, ctr, click_to_basket)
+            VALUES (?, ?, CURRENT_DATE, 0, 0, 1, 0, 0)
+            ON CONFLICT (tenant_id, campaign_id, metric_date) DO UPDATE
+              SET add_to_cart     = campaign_metrics.add_to_cart + 1,
+                  click_to_basket = CASE WHEN campaign_metrics.clicks = 0 THEN 0
+                                         ELSE ROUND(CAST((campaign_metrics.add_to_cart + 1) AS DECIMAL) / campaign_metrics.clicks, 4) END,
+                  updated_at      = NOW()
+            """, tenantId, campaignId);
     }
 
     // Finds the most recent AD_CLICK for a session within the attribution window
@@ -71,30 +95,6 @@ public class EventRepository {
             tenantId, sessionId
         );
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    private void upsertMetric(String tenantId, String campaignId, String column) {
-        jdbc.update("""
-            INSERT INTO campaign_metrics (tenant_id, campaign_id, metric_date, %s, ctr, click_to_basket)
-            VALUES (?, ?, CURRENT_DATE, 1, 0, 0)
-            ON CONFLICT (tenant_id, campaign_id, metric_date) DO UPDATE
-              SET %s         = campaign_metrics.%s + 1,
-                  ctr             = CASE
-                                      WHEN (campaign_metrics.impressions + CASE WHEN '%s' = 'impressions' THEN 1 ELSE 0 END) = 0 THEN 0
-                                      ELSE ROUND(
-                                        CAST(campaign_metrics.clicks + CASE WHEN '%s' = 'clicks' THEN 1 ELSE 0 END AS DECIMAL) /
-                                        CAST(campaign_metrics.impressions + CASE WHEN '%s' = 'impressions' THEN 1 ELSE 0 END AS DECIMAL), 4)
-                                    END,
-                  click_to_basket = CASE
-                                      WHEN (campaign_metrics.clicks + CASE WHEN '%s' = 'clicks' THEN 1 ELSE 0 END) = 0 THEN 0
-                                      ELSE ROUND(
-                                        CAST(campaign_metrics.add_to_cart + CASE WHEN '%s' = 'add_to_cart' THEN 1 ELSE 0 END AS DECIMAL) /
-                                        CAST(campaign_metrics.clicks + CASE WHEN '%s' = 'clicks' THEN 1 ELSE 0 END AS DECIMAL), 4)
-                                    END,
-                  updated_at      = NOW()
-            """.formatted(column, column, column, column, column, column, column, column, column),
-            tenantId, campaignId
-        );
     }
 
     private Timestamp parseTimestamp(String ts) {
