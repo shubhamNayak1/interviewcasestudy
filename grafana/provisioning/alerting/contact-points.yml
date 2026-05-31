@@ -1,0 +1,13 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: adtech-ops
+    receivers:
+      # ── Slack-style webhook (swap URL for a real Slack/Teams incoming webhook) ──
+      - uid: adtech-webhook
+        type: webhook
+        settings:
+          url: https://webhook.site/adtech-alerts   # replace with real endpoint
+          httpMethod: POST
+        disableResolveMessage: false
